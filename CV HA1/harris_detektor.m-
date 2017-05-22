@@ -1,0 +1,56 @@
+function  Merkmale = harris_detektor(Image,varargin) 
+    [rows, columns, color] = size(Image);
+    sigma = 1;
+    thresh = 1.4;
+    k = 0.05
+    tile_size = 10;
+    rremain = mod(rows,tile_size);
+    cremain = mod(columns,tile_size);
+    Image_tiles = mat2cell(Image,diff(round(linspace(0,rows,tile_size+1))),columns);
+    merkmal_temp = cell(1,1,1);
+    if (color == 1)
+        for m = 1:size(Image_tiles,1)
+            % Create Gauss Filter
+            dimension = max(1,fix(6*sigma));
+            [gx gy] = meshgrid(-(dimension-1)/2 : (dimension-1)/2, -(dimension-1)/2 : (dimension-1)/2);
+            gauss = exp(-gx.^2/(2*sigma^2)-gy.^2/(2*sigma^2));
+            gauss = gauss./sum(gauss(:));
+
+            % Sobelfilter Image
+            [Fx,Fy] = sobel_xy(Image_tiles{m});
+
+            % Filtering matrices with gauss
+            Fxg = conv2(Fx.^2, gauss, 'same');
+            Fyg = conv2(Fy.^2, gauss, 'same');
+            Fxyg = conv2(Fx.*Fy, gauss, 'same');
+
+            % Calculate Harris
+            H =  (Fxg.*Fyg - Fxyg.^2)-k*(Fxg+Fyg).^2;
+            
+            % Find Maxima
+            mx = ordfilt2(H, 3 .^ 2, ones(3));
+
+            % Pick values based on threshold
+            H = (H == mx) & (H > thresh);
+            
+            [r,c] = find(H);
+            tile_num = m * ones(1, size(r,1));
+            if (size(merkmal_temp) ~= 1)
+                merkmal_temp = [merkmal_temp;[r,c],tile_num];
+                disp(merkmal_temp)
+            else
+                merkmal_temp = [r,c];
+                disp(merkmal_temp)
+            end
+        end
+        % show result
+        Merkmale = merkmal_temp;
+        figure, imagesc(Image), axis image, colormap(gray), hold on
+        plot(Merkmale(:,1)+,Merkmale(:,2),'yo'), title('Harris');
+
+       % Merkmale = [r,c];
+    else
+        disp('ERROR: Image is not greyscaled!');
+    end
+    
+end
